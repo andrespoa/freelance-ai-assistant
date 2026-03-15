@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Freelance AI Assistant</title>
+
+  <!-- Google Fonts: display + body pairing -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet"/>
+
+  <link rel="stylesheet" href="css/styles.css"/>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════════
+       SIDEBAR — navegación y datos del freelancer
+  ════════════════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <span class="logo-icon">⬡</span>
+        <span class="logo-text">FreelanceAI</span>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle" aria-label="Cerrar menú">✕</button>
+    </div>
+
+    <!-- Perfil del usuario -->
+    <div class="user-profile">
+      <div class="avatar" id="userAvatar">F</div>
+      <div class="user-info">
+        <p class="user-name" id="userName">Freelancer</p>
+        <p class="user-role">Full Stack Dev</p>
+      </div>
+    </div>
+
+    <!-- Navegación principal -->
+    <nav class="sidebar-nav">
+      <button class="nav-item active" data-section="chat">
+        <span class="nav-icon">💬</span> Chat
+      </button>
+      <button class="nav-item" data-section="clients">
+        <span class="nav-icon">👥</span> Clientes
+      </button>
+      <button class="nav-item" data-section="projects">
+        <span class="nav-icon">📁</span> Proyectos
+      </button>
+      <button class="nav-item" data-section="tasks">
+        <span class="nav-icon">✅</span> Tareas
+      </button>
+      <button class="nav-item" data-section="history">
+        <span class="nav-icon">📜</span> Historial
+      </button>
+    </nav>
+
+    <!-- Historial de conversaciones -->
+    <div class="conversation-history" id="conversationHistory">
+      <p class="history-label">Conversaciones recientes</p>
+      <div id="historyList">
+        <!-- Se llena dinámicamente con JS -->
+      </div>
+    </div>
+
+    <!-- Acciones rápidas -->
+    <div class="sidebar-footer">
+      <button class="btn-new-chat" id="newChatBtn">+ Nueva conversación</button>
+      <button class="btn-settings" id="settingsBtn">⚙ Configuración</button>
+    </div>
+  </aside>
+
+  <!-- ═══════════════════════════════════════════
+       MAIN — área principal
+  ════════════════════════════════════════════ -->
+  <main class="main-content">
+
+    <!-- Topbar móvil -->
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn" aria-label="Abrir menú">☰</button>
+      <span class="topbar-title">FreelanceAI Assistant</span>
+      <div class="topbar-status">
+        <span class="status-dot" id="statusDot"></span>
+        <span id="statusText">Conectando…</span>
+      </div>
+    </header>
+
+    <!-- ─── Sección CHAT ─── -->
+    <section class="section active" id="section-chat">
+      <div class="chat-wrapper">
+
+        <!-- Mensajes -->
+        <div class="messages-container" id="messagesContainer">
+          <!-- Bienvenida inicial -->
+          <div class="welcome-screen" id="welcomeScreen">
+            <div class="welcome-icon">⬡</div>
+            <h2>Hola, soy tu asistente freelance</h2>
+            <p>Puedo ayudarte a gestionar clientes, proyectos y tareas. ¿Por dónde empezamos?</p>
+            <div class="quick-actions">
+              <button class="quick-btn" data-msg="¿Cuáles son mis tareas pendientes?">📋 Ver tareas</button>
+              <button class="quick-btn" data-msg="Muéstrame mis clientes activos">👥 Mis clientes</button>
+              <button class="quick-btn" data-msg="¿Qué proyectos tengo en curso?">📁 Proyectos activos</button>
+              <button class="quick-btn" data-msg="Crear una nueva tarea">✏ Nueva tarea</button>
+            </div>
+          </div>
+          <!-- Los mensajes se insertan aquí dinámicamente -->
+        </div>
+
+        <!-- Indicador "escribiendo" -->
+        <div class="typing-indicator" id="typingIndicator" hidden>
+          <div class="typing-bubble">
+            <span></span><span></span><span></span>
+          </div>
+          <p>IA está escribiendo…</p>
+        </div>
+
+        <!-- Input de chat -->
+        <div class="chat-input-area">
+          <div class="input-wrapper">
+            <textarea
+              id="messageInput"
+              placeholder="Escribe un mensaje o haz una pregunta…"
+              rows="1"
+              aria-label="Mensaje"
+            ></textarea>
+            <button class="send-btn" id="sendBtn" aria-label="Enviar mensaje">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+              </svg>
+            </button>
+          </div>
+          <p class="input-hint">
+            Ctrl+Enter para enviar · Usa comandos como <code>/tarea</code>, <code>/cliente</code>, <code>/proyecto</code>
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Sección CLIENTES ─── -->
+    <section class="section" id="section-clients">
+      <div class="section-header">
+        <h2>Clientes</h2>
+        <button class="btn-primary" id="addClientBtn">+ Agregar cliente</button>
+      </div>
+      <div class="cards-grid" id="clientsGrid">
+        <div class="empty-state">
+          <p>No hay clientes todavía.<br/>Agrega uno o pídele a la IA que lo cree.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Sección PROYECTOS ─── -->
+    <section class="section" id="section-projects">
+      <div class="section-header">
+        <h2>Proyectos</h2>
+        <button class="btn-primary" id="addProjectBtn">+ Nuevo proyecto</button>
+      </div>
+      <div class="cards-grid" id="projectsGrid">
+        <div class="empty-state">
+          <p>Sin proyectos por el momento.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ─── Sección TAREAS ─── -->
+    <section class="section" id="section-tasks">
+      <div class="section-header">
+        <h2>Tareas</h2>
+        <button class="btn-primary" id="addTaskBtn">+ Nueva tarea</button>
+      </div>
+      <div class="tasks-filters">
+        <button class="filter-btn active" data-filter="all">Todas</button>
+        <button class="filter-btn" data-filter="pending">Pendientes</button>
+        <button class="filter-btn" data-filter="in_progress">En progreso</button>
+        <button class="filter-btn" data-filter="done">Completadas</button>
+      </div>
+      <div id="tasksList" class="tasks-list">
+        <div class="empty-state"><p>Sin tareas todavía.</p></div>
+      </div>
+    </section>
+
+    <!-- ─── Sección HISTORIAL ─── -->
+    <section class="section" id="section-history">
+      <div class="section-header">
+        <h2>Historial de conversaciones</h2>
+      </div>
+      <div id="fullHistoryList" class="history-full-list">
+        <div class="empty-state"><p>No hay conversaciones guardadas.</p></div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══════════════════════════════════════════
+       MODAL — configuración
+  ════════════════════════════════════════════ -->
+  <div class="modal-overlay" id="settingsModal" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h3>⚙ Configuración</h3>
+        <button class="modal-close" id="closeSettings">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <label class="form-label">Proveedor de IA
+          <select id="aiProvider">
+            <option value="claude">Anthropic Claude</option>
+            <option value="openai">OpenAI GPT</option>
+            <option value="mock">Mock (sin API key)</option>
+          </select>
+        </label>
+
+        <label class="form-label">API Key
+          <input type="password" id="apiKeyInput" placeholder="sk-… / claude-…"/>
+        </label>
+
+        <label class="form-label">Supabase URL
+          <input type="text" id="supabaseUrl" placeholder="https://xxxx.supabase.co"/>
+        </label>
+
+        <label class="form-label">Supabase Anon Key
+          <input type="password" id="supabaseKey" placeholder="eyJ…"/>
+        </label>
+
+        <label class="form-label">Tu nombre
+          <input type="text" id="freelancerName" placeholder="Nombre del freelancer"/>
+        </label>
+
+        <div class="modal-actions">
+          <button class="btn-primary" id="saveSettings">Guardar configuración</button>
+        </div>
+
+        <div class="config-note">
+          <strong>⚠ Nota de seguridad:</strong> En producción, nunca guardes API keys en localStorage.
+          Usa variables de entorno en un backend propio o un proxy serverless.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════
+       SCRIPTS
+  ════════════════════════════════════════════ -->
+  <script src="js/config.js"></script>
+  <script src="js/supabaseClient.js"></script>
+  <script src="js/aiService.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
