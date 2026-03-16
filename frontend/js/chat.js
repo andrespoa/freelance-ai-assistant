@@ -36,36 +36,48 @@ const DOM = {
  * - Carga la conversación más reciente (o crea una nueva)
  */
 async function initChat() {
-  // Input de texto: envía con Ctrl+Enter
-  DOM.input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && e.ctrlKey) {
-      e.preventDefault();
-      sendMessage();
+  try {
+    // Input de texto: envía con Ctrl+Enter
+    if (DOM.input) {
+      DOM.input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && e.ctrlKey) {
+          e.preventDefault();
+          sendMessage();
+        }
+      });
+
+      // Auto-resize del textarea
+      DOM.input.addEventListener('input', () => {
+        DOM.input.style.height = 'auto';
+        DOM.input.style.height = Math.min(DOM.input.scrollHeight, 160) + 'px';
+      });
+    } else {
+      console.warn('[Chat] Input de mensaje no encontrado en el DOM.');
     }
-  });
 
-  // Auto-resize del textarea
-  DOM.input.addEventListener('input', () => {
-    DOM.input.style.height = 'auto';
-    DOM.input.style.height = Math.min(DOM.input.scrollHeight, 160) + 'px';
-  });
+    // Botón enviar
+    if (DOM.sendBtn) {
+      DOM.sendBtn.addEventListener('click', sendMessage);
+    } else {
+      console.warn('[Chat] Botón enviar no encontrado en el DOM.');
+    }
 
-  // Botón enviar
-  DOM.sendBtn.addEventListener('click', sendMessage);
-
-  // Botones de acción rápida (pantalla de bienvenida)
-  document.querySelectorAll('.quick-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const msg = btn.getAttribute('data-msg');
-      if (msg) {
-        DOM.input.value = msg;
-        sendMessage();
-      }
+    // Botones de acción rápida (pantalla de bienvenida)
+    document.querySelectorAll('.quick-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const msg = btn.getAttribute('data-msg');
+        if (msg && DOM.input) {
+          DOM.input.value = msg;
+          sendMessage();
+        }
+      });
     });
-  });
 
-  // Cargar o crear conversación
-  await loadOrCreateConversation();
+    // Cargar o crear conversación
+    await loadOrCreateConversation();
+  } catch (err) {
+    console.error('[Chat] Error inicializando chat:', err);
+  }
 }
 
 /**
@@ -143,6 +155,59 @@ async function sendMessage() {
   DOM.input.value = '';
   DOM.input.style.height = 'auto';
 
+  // Manejo de comandos mediante el parser central (si está disponible)
+  let parsedCmd = null;
+  if (typeof parseCommand === 'function') {
+    parsedCmd = parseCommand(text);
+  }
+
+  if (parsedCmd && parsedCmd.command) {
+    if (parsedCmd.command === 'invalid') {
+      appendMessage('error', `Comando inválido: ${parsedCmd.error || ''}`);
+      return;
+    }
+
+    switch (parsedCmd.command) {
+      case 'create_task': {
+        const task = await createTask(parsedCmd.data);
+        if (task) {
+          appendMessage('ai', `✅ Tarea creada: ${task.title || parsedCmd.data.title}`);
+          showToast('Tarea creada', 'success');
+          if (document.getElementById('section-tasks').classList.contains('active')) loadTasksSection();
+        } else {
+          appendMessage('error', 'No se pudo crear la tarea.');
+        }
+        return;
+      }
+      case 'create_client': {
+        const client = await createClient(parsedCmd.data);
+        if (client) {
+          appendMessage('ai', `👥 Cliente creado: ${client.name || parsedCmd.data.name}`);
+          showToast('Cliente creado', 'success');
+          if (document.getElementById('section-clients').classList.contains('active')) loadClientsSection();
+        } else {
+          appendMessage('error', 'No se pudo crear el cliente.');
+        }
+        return;
+      }
+      case 'create_project': {
+        const project = await createProject(parsedCmd.data);
+        if (project) {
+          appendMessage('ai', `📁 Proyecto creado: ${project.name || parsedCmd.data.name}`);
+          showToast('Proyecto creado', 'success');
+          if (document.getElementById('section-projects').classList.contains('active')) loadProjectsSection();
+        } else {
+          appendMessage('error', 'No se pudo crear el proyecto.');
+        }
+        return;
+      }
+      case 'unknown':
+        // no es un comando reconocido por el parser — permitir que la IA lo procese
+        break;
+    }
+  }
+
+
   // Si es la primera message, crea la conversación en Supabase
   if (!ChatState.conversationId) {
     const title = text.slice(0, 60) + (text.length > 60 ? '…' : '');
@@ -154,12 +219,33 @@ async function sendMessage() {
   hideWelcomeScreen();
 
   // Agrega el mensaje del usuario
-  const userMsg = { role: 'user', content: text, timestamp: new Date().toISOString() };
+  const userMsg = { role: 'user', content: text, timestamp: new Date().toISOString(), _saved: false };
   ChatState.messages.push(userMsg);
   appendMessage('user', text);
 
-  // Guarda en Supabase
-  await saveMessage(ChatState.conversationId, 'user', text);
+  // Si la conversación tiene ID local (p.ej. 'local-...') pero Supabase ya está listo,
+  // crea la conversación real en la DB antes de intentar guardar mensajes.
+  if (String(ChatState.conversationId).startsWith('local-') && isSupabaseReady()) {
+    try {
+      const title = ChatState.messages[0]?.content?.slice(0, 60) || 'Nueva conversación';
+      const conv = await createConversation(title);
+      if (conv?.id) {
+        ChatState.conversationId = conv.id;
+        // Migrar mensajes locales pendientes al servidor (si hay)
+        for (const m of ChatState.messages) {
+          if (m._saved) continue;
+          await saveMessage(ChatState.conversationId, m.role, m.content);
+          m._saved = true;
+        }
+      }
+    } catch (err) {
+      console.error('[Chat] Error migrando conversación local a Supabase:', err);
+    }
+  } else {
+    // Guarda en Supabase (si ya es un ID válido o supabase no está listo, saveMessage internamente lo ignorará)
+    await saveMessage(ChatState.conversationId, 'user', text);
+    userMsg._saved = true;
+  }
 
   // Muestra el indicador de escritura
   setLoading(true);

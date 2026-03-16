@@ -16,17 +16,31 @@
 document.addEventListener('DOMContentLoaded', async () => {
   console.info('[App] FreelanceAI Assistant iniciando…');
 
-  // 1. Inicializa Supabase
-  const supabaseOk = initSupabase();
+  // 1. Inicializa Supabase (protegido para evitar que errores detengan la carga)
+  let supabaseOk = false;
+  try {
+    supabaseOk = !!initSupabase();
+  } catch (err) {
+    console.error('[App] Error inicializando Supabase:', err);
+    supabaseOk = false;
+  }
 
   // 2. Actualiza status en la topbar
   updateConnectionStatus(supabaseOk);
 
-  // 3. Inicializa el chat
-  await initChat();
+  // 3. Inicializa el chat (protegido para que fallos no detengan la carga)
+  try {
+    await initChat();
+  } catch (err) {
+    console.error('[App] Error inicializando chat:', err);
+  }
 
-  // 4. Carga el perfil del freelancer
-  await loadFreelancerProfile();
+  // 4. Carga el perfil del freelancer (protegido)
+  try {
+    await loadFreelancerProfile();
+  } catch (err) {
+    console.error('[App] Error cargando perfil del freelancer:', err);
+  }
 
   // 5. Registra todos los event listeners de la app
   setupNavigation();
@@ -45,16 +59,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 // ════════════════════════════════════════════════════════════
 
 async function loadFreelancerProfile() {
-  const profile = await getFreelancerProfile();
-  const name = profile?.name || CONFIG.FREELANCER_NAME || 'Freelancer';
+  try {
+    const profile = await getFreelancerProfile();
+    const name = profile?.name || CONFIG.FREELANCER_NAME || 'Freelancer';
 
-  // Actualiza UI
-  const nameEl = document.getElementById('userName');
-  const avatarEl = document.getElementById('userAvatar');
-  if (nameEl)   nameEl.textContent = name;
-  if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
+    // Actualiza UI
+    const nameEl = document.getElementById('userName');
+    const avatarEl = document.getElementById('userAvatar');
+    if (nameEl)   nameEl.textContent = name;
+    if (avatarEl) avatarEl.textContent = name.charAt(0).toUpperCase();
 
-  document.title = `${name} · FreelanceAI`;
+    document.title = `${name} · FreelanceAI`;
+  } catch (err) {
+    console.error('[App] loadFreelancerProfile error:', err);
+    // Fallback: ensure UI remains usable
+    const nameEl = document.getElementById('userName');
+    const avatarEl = document.getElementById('userAvatar');
+    if (nameEl) nameEl.textContent = CONFIG.FREELANCER_NAME || 'Freelancer';
+    if (avatarEl) avatarEl.textContent = (CONFIG.FREELANCER_NAME || 'F').charAt(0).toUpperCase();
+  }
 }
 
 
