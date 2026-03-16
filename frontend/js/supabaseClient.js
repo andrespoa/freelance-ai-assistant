@@ -16,28 +16,34 @@
 // El SDK de Supabase se carga desde CDN (ver index.html en producción)
 // o puede importarse como módulo ES si usas un bundler.
 
-let supabase = null;
+let _supabase = null;
 
 /**
  * Inicializa el cliente de Supabase.
  * Se llama desde app.js una vez cargada la config.
  */
 function initSupabase() {
-  if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) {
-    console.warn('[Supabase] No configurado. Usando modo sin persistencia.');
-    return false;
-  }
+  try {
+    if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) {
+      console.warn('[Supabase] No configurado. Usando modo sin persistencia.');
+      return false;
+    }
 
-  // Verifica que el SDK de Supabase esté disponible (CDN)
-  if (typeof window.supabase !== 'undefined') {
-    supabase = window.supabase.createClient(
-      CONFIG.SUPABASE_URL,
-      CONFIG.SUPABASE_ANON_KEY
-    );
-    console.info('[Supabase] Cliente inicializado correctamente.');
-    return true;
-  } else {
-    console.warn('[Supabase] SDK no encontrado. Agrega el script CDN al HTML.');
+      // Verifica que el SDK de Supabase esté disponible (CDN)
+      if (typeof window.supabase !== 'undefined' && typeof window.supabase.createClient === 'function') {
+        _supabase = window.supabase.createClient(
+          CONFIG.SUPABASE_URL,
+          CONFIG.SUPABASE_ANON_KEY
+        );
+        console.info('[Supabase] Cliente inicializado correctamente.');
+        return true;
+      } else {
+        console.warn('[Supabase] SDK no encontrado o versión incompatible. Agrega el script CDN al HTML.');
+        return false;
+      }
+  } catch (err) {
+    console.error('[Supabase] Error al inicializar el cliente:', err);
+    _supabase = null;
     return false;
   }
 }
@@ -47,7 +53,7 @@ function initSupabase() {
  * Permite que el resto de la app funcione sin base de datos (modo demo).
  */
 function isSupabaseReady() {
-  return supabase !== null;
+  return _supabase !== null;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -62,7 +68,7 @@ function isSupabaseReady() {
 async function createConversation(title = 'Nueva conversación') {
   if (!isSupabaseReady()) return { id: `local-${Date.now()}`, title };
 
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('conversations')
     .insert({ title, created_at: new Date().toISOString() })
     .select()
@@ -79,7 +85,7 @@ async function createConversation(title = 'Nueva conversación') {
 async function getConversations() {
   if (!isSupabaseReady()) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('conversations')
     .select('id, title, created_at, updated_at')
     .order('updated_at', { ascending: false })
@@ -98,26 +104,38 @@ async function getConversations() {
 async function saveMessage(conversationId, role, content) {
   if (!isSupabaseReady()) return null;
 
-  const { data, error } = await supabase
-    .from('messages')
-    .insert({
-      conversation_id: conversationId,
-      role,
-      content,
-      created_at: new Date().toISOString(),
-    })
-    .select()
-    .single();
+  try {
+    const { data, error } = await _supabase
+      .from('messages')
+      .insert({
+        conversation_id: conversationId,
+        role,
+        content,
+        created_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
 
-  if (error) { console.error('[Supabase] saveMessage:', error); return null; }
+    if (error) {
+      console.error('[Supabase] saveMessage:', error);
+      return null;
+    }
 
-  // Actualiza el timestamp de la conversación
-  await supabase
-    .from('conversations')
-    .update({ updated_at: new Date().toISOString() })
-    .eq('id', conversationId);
+    // Actualiza el timestamp de la conversación (siempre con la misma instancia)
+    try {
+      await _supabase
+        .from('conversations')
+        .update({ updated_at: new Date().toISOString() })
+        .eq('id', conversationId);
+    } catch (upErr) {
+      console.warn('[Supabase] No se pudo actualizar timestamp de conversación:', upErr);
+    }
 
-  return data;
+    return data;
+  } catch (err) {
+    console.error('[Supabase] saveMessage excepción:', err);
+    return null;
+  }
 }
 
 /**
@@ -128,7 +146,7 @@ async function saveMessage(conversationId, role, content) {
 async function getMessages(conversationId, limit = 100) {
   if (!isSupabaseReady()) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('messages')
     .select('*')
     .eq('conversation_id', conversationId)
@@ -149,7 +167,7 @@ async function getMessages(conversationId, limit = 100) {
 async function getClients() {
   if (!isSupabaseReady()) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('clients')
     .select('*')
     .order('name', { ascending: true });
@@ -167,7 +185,7 @@ async function createClient(clientData) {
     return { id: `local-${Date.now()}`, ...clientData, status: 'active' };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('clients')
     .insert({ ...clientData, status: 'active', created_at: new Date().toISOString() })
     .select()
@@ -183,7 +201,7 @@ async function createClient(clientData) {
 async function updateClient(id, updates) {
   if (!isSupabaseReady()) return null;
 
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('clients')
     .update({ ...updates, updated_at: new Date().toISOString() })
     .eq('id', id)
@@ -204,7 +222,7 @@ async function updateClient(id, updates) {
 async function getProjects() {
   if (!isSupabaseReady()) return [];
 
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('projects')
     .select('*, clients(name)')
     .order('created_at', { ascending: false });
@@ -222,7 +240,7 @@ async function createProject(projectData) {
     return { id: `local-${Date.now()}`, ...projectData, status: 'in_progress' };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('projects')
     .insert({ ...projectData, status: 'in_progress', created_at: new Date().toISOString() })
     .select()
@@ -243,7 +261,7 @@ async function createProject(projectData) {
 async function getTasks(status = null) {
   if (!isSupabaseReady()) return [];
 
-  let query = supabase
+  let query = _supabase
     .from('tasks')
     .select('*, projects(name), clients(name)')
     .order('due_date', { ascending: true });
@@ -267,7 +285,7 @@ async function createTask(taskData) {
     return { id: `local-${Date.now()}`, ...taskData, status: 'pending' };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('tasks')
     .insert({
       ...taskData,
@@ -287,7 +305,7 @@ async function createTask(taskData) {
 async function updateTaskStatus(id, status) {
   if (!isSupabaseReady()) return null;
 
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('tasks')
     .update({ status, updated_at: new Date().toISOString() })
     .eq('id', id)
@@ -311,7 +329,7 @@ async function getFreelancerProfile() {
     return { name: CONFIG.FREELANCER_NAME, role: 'Freelancer', email: '' };
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await _supabase
     .from('freelancer_profile')
     .select('*')
     .limit(1)
