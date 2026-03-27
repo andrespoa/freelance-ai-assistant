@@ -84,6 +84,9 @@
       </div>
     </header>
 
+    <!-- System status banner (errors / warnings) -->
+    <div id="systemBanner" class="system-banner" hidden></div>
+
     <!-- ─── Sección CHAT ─── -->
     <section class="section active" id="section-chat">
       <div class="chat-wrapper">
@@ -137,6 +140,63 @@
     </section>
 
     <!-- ─── Sección CLIENTES ─── -->
+
+              <!-- ═══════════════════════════════════════════════════════════════════
+                   MODAL — Crear / Editar Cliente
+              ═══════════════════════════════════════════════════════════════════ -->
+              <div class="modal-overlay" id="clientModal" hidden>
+                <div class="modal">
+                  <div class="modal-header">
+                    <h3 id="clientModalTitle">Crear cliente</h3>
+                    <button class="modal-close" id="closeClientModal">✕</button>
+                  </div>
+                  <div class="modal-body">
+                    <input type="hidden" id="clientIdInput" />
+
+                    <label class="form-label">Nombre *
+                      <input id="clientNameInput" type="text" placeholder="Ej. Ana García" />
+                    </label>
+
+                    <label class="form-label">Correo electrónico *
+                      <input id="clientEmailInput" type="email" placeholder="ejemplo@dominio.com" />
+                    </label>
+
+                    <label class="form-label">Teléfono *
+                      <input id="clientPhoneInput" type="tel" placeholder="3001234567" />
+                    </label>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+                      <label class="form-label">Empresa
+                        <input id="clientCompanyInput" type="text" placeholder="Opcional" />
+                      </label>
+                      <label class="form-label">Sitio web
+                        <input id="clientWebsiteInput" type="url" placeholder="https://empresa.com" />
+                      </label>
+                    </div>
+
+                    <label class="form-label">Dirección
+                      <input id="clientAddressInput" type="text" placeholder="Calle, Ciudad" />
+                    </label>
+
+                    <label class="form-label">Notas
+                      <textarea id="clientNotesInput" rows="3" placeholder="Notas adicionales (opcional)"></textarea>
+                    </label>
+
+                    <label class="form-label">Estado
+                      <select id="clientStatusInput">
+                        <option value="active">Activo</option>
+                        <option value="inactive">Inactivo</option>
+                        <option value="prospect">Prospecto</option>
+                      </select>
+                    </label>
+
+                    <div class="modal-actions" style="display:flex;gap:.5rem;justify-content:flex-end;">
+                      <button id="cancelClientBtn" class="btn-settings">Cancelar</button>
+                      <button id="saveClientBtn" class="btn-primary">Guardar</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
     <section class="section" id="section-clients">
       <div class="section-header">
         <h2>Clientes</h2>
@@ -148,6 +208,54 @@
         </div>
       </div>
     </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         MODAL — Crear / Editar Proyecto
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="projectModal" hidden>
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="projectModalTitle">Crear proyecto</h3>
+          <button class="modal-close" id="closeProjectModal">✕</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="projectIdInput" />
+
+          <label class="form-label">Nombre *
+            <input id="projectNameInput" type="text" placeholder="Ej. Sitio web corporativo" />
+          </label>
+
+          <label class="form-label">Cliente
+            <select id="projectClientSelect">
+              <option value="">-- Sin cliente --</option>
+            </select>
+          </label>
+
+          <label class="form-label">Descripción
+            <textarea id="projectDescriptionInput" rows="3" placeholder="Detalles del proyecto (opcional)"></textarea>
+          </label>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+            <label class="form-label">Estado
+              <select id="projectStatusInput">
+                <option value="in_progress">En progreso</option>
+                <option value="pending">Pendiente</option>
+                <option value="done">Completado</option>
+                <option value="cancelled">Cancelado</option>
+              </select>
+            </label>
+            <label class="form-label">Fecha límite
+              <input id="projectDeadlineInput" type="date" />
+            </label>
+          </div>
+
+          <div class="modal-actions" style="display:flex;gap:.5rem;justify-content:flex-end;">
+            <button id="cancelProjectBtn" class="btn-settings">Cancelar</button>
+            <button id="saveProjectBtn" class="btn-primary">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ─── Sección PROYECTOS ─── -->
     <section class="section" id="section-projects">
@@ -161,6 +269,61 @@
         </div>
       </div>
     </section>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         MODAL — Crear / Editar Tarea
+    ═══════════════════════════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="taskModal" hidden>
+      <div class="modal">
+        <div class="modal-header">
+          <h3 id="taskModalTitle">Crear tarea</h3>
+          <button class="modal-close" id="closeTaskModal">✕</button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="taskIdInput" />
+
+          <label class="form-label">Descripción *
+            <input id="taskTitleInput" type="text" placeholder="Ej. Revisar contrato" />
+          </label>
+
+          <label class="form-label">Detalles
+            <textarea id="taskDescriptionInput" rows="3" placeholder="Notas adicionales (opcional)"></textarea>
+          </label>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;">
+            <label class="form-label">Estado
+              <select id="taskStatusInput">
+                <option value="pending">Pendiente</option>
+                <option value="in_progress">En progreso</option>
+                <option value="done">Completada</option>
+              </select>
+            </label>
+            <label class="form-label">Prioridad
+              <select id="taskPriorityInput">
+                <option value="low">Baja</option>
+                <option value="medium" selected>Media</option>
+                <option value="high">Alta</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="form-label">Proyecto
+            <select id="taskProjectSelect">
+              <option value="">-- Sin proyecto --</option>
+            </select>
+          </label>
+
+          <label class="form-label">Fecha límite
+            <input id="taskDueDateInput" type="date" />
+          </label>
+
+          <div class="modal-actions" style="display:flex;gap:.5rem;justify-content:flex-end;">
+            <button id="cancelTaskBtn" class="btn-settings">Cancelar</button>
+            <button id="saveTaskBtn" class="btn-primary">Guardar</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- ─── Sección TAREAS ─── -->
     <section class="section" id="section-tasks">
@@ -245,7 +408,9 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabaseClient.js"></script>
   <script src="js/commands.js"></script>
+  <script src="js/actionsExecutor.js"></script>
   <script src="js/aiService.js"></script>
+  <script src="js/dbCheck.js"></script>
   <script src="js/chat.js"></script>
   <script src="js/app.js"></script>
 </body>

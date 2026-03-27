@@ -23,6 +23,12 @@ let _supabase = null;
  * Se llama desde app.js una vez cargada la config.
  */
 function initSupabase() {
+  // Evita crear múltiples instancias si ya existe una
+  if (_supabase) {
+    console.info('[Supabase] Cliente ya inicializado — reutilizando instancia.');
+    return true;
+  }
+
   try {
     if (!CONFIG.SUPABASE_URL || !CONFIG.SUPABASE_ANON_KEY) {
       console.warn('[Supabase] No configurado. Usando modo sin persistencia.');
@@ -212,6 +218,28 @@ async function updateClient(id, updates) {
   return data;
 }
 
+/**
+ * Elimina un cliente por id.
+ * @param {string} id
+ * @returns {boolean} true si eliminado o en modo demo simulado
+ */
+async function deleteClient(id) {
+  if (!id) return false;
+  if (!isSupabaseReady()) {
+    console.info('[Supabase] deleteClient: modo demo, simulando eliminación de', id);
+    return true;
+  }
+
+  try {
+    const { error } = await _supabase.from('clients').delete().eq('id', id);
+    if (error) { console.error('[Supabase] deleteClient error:', error); return false; }
+    return true;
+  } catch (err) {
+    console.error('[Supabase] deleteClient excepción:', err);
+    return false;
+  }
+}
+
 // ════════════════════════════════════════════════════════════
 // PROYECTOS
 // ════════════════════════════════════════════════════════════
@@ -248,6 +276,41 @@ async function createProject(projectData) {
 
   if (error) { console.error('[Supabase] createProject:', error); return null; }
   return data;
+}
+
+/**
+ * Actualiza un proyecto por id.
+ * @param {string|number} id
+ * @param {object} updates
+ */
+async function updateProject(id, updates) {
+  if (!isSupabaseReady()) return null;
+
+  const { data, error } = await _supabase
+    .from('projects')
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) { console.error('[Supabase] updateProject:', error); return null; }
+  return data;
+}
+
+/**
+ * Elimina un proyecto por id.
+ * @param {string|number} id
+ */
+async function deleteProject(id) {
+  if (!isSupabaseReady()) return false;
+
+  const { error } = await _supabase
+    .from('projects')
+    .delete()
+    .eq('id', id);
+
+  if (error) { console.error('[Supabase] deleteProject:', error); return false; }
+  return true;
 }
 
 // ════════════════════════════════════════════════════════════
@@ -316,6 +379,28 @@ async function updateTaskStatus(id, status) {
   return data;
 }
 
+/**
+ * Elimina una tarea por id.
+ * @param {string} id
+ * @returns {boolean} true si eliminado o en modo demo simulado
+ */
+async function deleteTask(id) {
+  if (!id) return false;
+  if (!isSupabaseReady()) {
+    console.info('[Supabase] deleteTask: modo demo, simulando eliminación de', id);
+    return true;
+  }
+
+  try {
+    const { error } = await _supabase.from('tasks').delete().eq('id', id);
+    if (error) { console.error('[Supabase] deleteTask error:', error); return false; }
+    return true;
+  } catch (err) {
+    console.error('[Supabase] deleteTask excepción:', err);
+    return false;
+  }
+}
+
 // ════════════════════════════════════════════════════════════
 // FREELANCER (perfil)
 // ════════════════════════════════════════════════════════════
@@ -337,4 +422,32 @@ async function getFreelancerProfile() {
 
   if (error) { return { name: CONFIG.FREELANCER_NAME }; }
   return data;
+}
+
+/**
+ * Elimina una conversación y sus mensajes.
+ * Si la conversación es local (id empieza con 'local-') limpia el fallback local.
+ * @param {string} conversationId
+ * @returns {boolean} true si la operación fue aceptada (o simulada en demo)
+ */
+async function deleteConversation(conversationId) {
+  // Manejo demo/local
+  if (!isSupabaseReady()) {
+    console.info('[Supabase] deleteConversation: modo demo, eliminando localmente:', conversationId);
+    // Intentar limpiar cualquier almacenamiento local si existiera (clave genérica)
+    try { localStorage.removeItem(`conv:${conversationId}`); } catch (e) { /* ignore */ }
+    return true;
+  }
+
+  try {
+    // Primero eliminar mensajes asociados (si la tabla messages existe)
+    await _supabase.from('messages').delete().eq('conversation_id', conversationId);
+    // Luego eliminar la conversación
+    const { error } = await _supabase.from('conversations').delete().eq('id', conversationId);
+    if (error) { console.error('[Supabase] deleteConversation error:', error); return false; }
+    return true;
+  } catch (err) {
+    console.error('[Supabase] deleteConversation excepción:', err);
+    return false;
+  }
 }
