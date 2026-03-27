@@ -116,6 +116,42 @@ npx serve frontend -p 8080
 
 ---
 
+## 🧪 Testing
+
+### Pruebas Manuales (Checklist E2E)
+
+```bash
+# 1. Inicia servidor local
+npx serve frontend -p 8080
+
+# 2. Abre http://localhost:8080 en navegador
+
+# 3. Sigue el checklist de 31 test cases
+cat docs/DAY14_TESTING_CHECKLIST.md
+```
+
+Ver: [docs/DAY14_TESTING_CHECKLIST.md](docs/DAY14_TESTING_CHECKLIST.md)
+
+### Pruebas Automáticas (Playwright)
+
+```bash
+# Instalar (primera vez)
+npm install @playwright/test --save-dev
+
+# Inicia servidor en otra terminal
+npx serve frontend -p 8080
+
+# Ejecutar smoke tests
+npx playwright test tests/smoke.spec.js
+
+# Ver reporte
+npx playwright show-report
+```
+
+Ver: [tests/README.md](tests/README.md)
+
+---
+
 ## ⚙️ Configuración
 
 ### 1. Conectar Supabase

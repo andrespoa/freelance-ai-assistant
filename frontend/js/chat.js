@@ -158,7 +158,24 @@ async function sendMessage() {
   // Manejo de comandos mediante el parser central (si está disponible)
   let parsedCmd = null;
   if (typeof parseCommand === 'function') {
-    parsedCmd = parseCommand(text);
+    try {
+      parsedCmd = parseCommand(text);
+    } catch (err) {
+      console.error('[Chat] parseCommand threw error for text:', text, err);
+      appendMessage('error', `Error al procesar comando: ${err.message || err}`);
+      // No bloquear el flujo: permitir que la IA procese el mensaje
+      parsedCmd = null;
+    }
+  }
+
+  // Si no hay comando slash, intentamos detectar un intento en lenguaje natural
+  if ((!parsedCmd || parsedCmd.command === 'unknown') && typeof detectNaturalLanguageCommand === 'function') {
+    try {
+      const nl = detectNaturalLanguageCommand(text);
+      if (nl) parsedCmd = nl;
+    } catch (err) {
+      console.error('[Chat] detectNaturalLanguageCommand threw error for text:', text, err);
+    }
   }
 
   if (parsedCmd && parsedCmd.command) {
@@ -169,35 +186,169 @@ async function sendMessage() {
 
     switch (parsedCmd.command) {
       case 'create_task': {
-        const task = await createTask(parsedCmd.data);
-        if (task) {
-          appendMessage('ai', `✅ Tarea creada: ${task.title || parsedCmd.data.title}`);
+        await saveUserMessageToConversation(text);
+        // Ejecuta la acción a través del executor central
+        const res = await actionsExecutor.executeAction({ action: 'create_task', data: parsedCmd.data });
+        if (res.ok) {
+          const task = res.result;
+          appendMessage('ai', `✅ Tarea creada: ${task?.title || parsedCmd.data.title}`);
           showToast('Tarea creada', 'success');
           if (document.getElementById('section-tasks').classList.contains('active')) loadTasksSection();
         } else {
-          appendMessage('error', 'No se pudo crear la tarea.');
+          appendMessage('error', `No se pudo crear la tarea: ${res.error || 'error desconocido'}`);
         }
         return;
       }
       case 'create_client': {
-        const client = await createClient(parsedCmd.data);
-        if (client) {
-          appendMessage('ai', `👥 Cliente creado: ${client.name || parsedCmd.data.name}`);
+        await saveUserMessageToConversation(text);
+        const res = await actionsExecutor.executeAction({ action: 'create_client', data: parsedCmd.data });
+        if (res.ok) {
+          const client = res.result;
+          appendMessage('ai', `👥 Cliente creado: ${client?.name || parsedCmd.data.name}`);
           showToast('Cliente creado', 'success');
           if (document.getElementById('section-clients').classList.contains('active')) loadClientsSection();
         } else {
-          appendMessage('error', 'No se pudo crear el cliente.');
+          appendMessage('error', `No se pudo crear el cliente: ${res.error || 'error desconocido'}`);
+        }
+        return;
+      }
+      case 'open_client_modal': {
+        // Abrir modal para crear/editar cliente (prefill opcional)
+        try {
+          window.openClientModal(parsedCmd.data || {});
+          appendMessage('ai', 'Abriendo formulario para cliente…');
+        } catch (err) {
+          console.error('[Chat] open_client_modal error', err);
+          appendMessage('error', 'No se pudo abrir el formulario de cliente');
         }
         return;
       }
       case 'create_project': {
-        const project = await createProject(parsedCmd.data);
-        if (project) {
-          appendMessage('ai', `📁 Proyecto creado: ${project.name || parsedCmd.data.name}`);
+        await saveUserMessageToConversation(text);
+        const res = await actionsExecutor.executeAction({ action: 'create_project', data: parsedCmd.data });
+        if (res.ok) {
+          const project = res.result;
+          appendMessage('ai', `📁 Proyecto creado: ${project?.name || parsedCmd.data.name}`);
           showToast('Proyecto creado', 'success');
           if (document.getElementById('section-projects').classList.contains('active')) loadProjectsSection();
         } else {
-          appendMessage('error', 'No se pudo crear el proyecto.');
+          appendMessage('error', `No se pudo crear el proyecto: ${res.error || 'error desconocido'}`);
+        }
+        return;
+      }
+      case 'list_projects': {
+        await saveUserMessageToConversation(text);
+        const res = await actionsExecutor.executeAction({ action: 'list_projects', data: parsedCmd.data });
+        if (res.ok) {
+          const projects = res.result || [];
+          if (projects.length === 0) {
+            appendMessage('ai', 'No hay proyectos registrados.');
+          } else {
+            // Para evitar mensajes extremadamente largos en el chat, mostramos hasta 50 proyectos
+            const MAX_IN_CHAT = 50;
+            const total = projects.length;
+            const shown = projects.slice(0, MAX_IN_CHAT);
+            const listText = shown.map(p => `• ${p.name}${p.clients?.name ? ' — ' + p.clients.name : ''}`).join('\n');
+            let footer = '';
+            if (total > MAX_IN_CHAT) footer = `\n\nMostrando ${MAX_IN_CHAT} de ${total} proyectos. Abre la sección "Proyectos" para ver todos.`;
+            appendMessage('ai', `Proyectos:\n${listText}${footer}`);
+          }
+          if (document.getElementById('section-projects')) document.querySelector('[data-section="projects"]')?.click();
+        } else {
+          appendMessage('error', `No se pudieron listar proyectos: ${res.error || 'error desconocido'}`);
+        }
+        return;
+      }
+      case 'open_project_modal': {
+        try {
+          window.openProjectModal(parsedCmd.data || {});
+          appendMessage('ai', 'Abriendo formulario para proyecto…');
+        } catch (err) {
+          console.error('[Chat] open_project_modal error', err);
+          appendMessage('error', 'No se pudo abrir el formulario de proyecto');
+        }
+        return;
+      }
+      case 'list_clients': {
+        await saveUserMessageToConversation(text);
+        const res = await actionsExecutor.executeAction({ action: 'list_clients', data: parsedCmd.data });
+        if (res.ok) {
+          const clients = res.result || [];
+          if (clients.length === 0) appendMessage('ai', 'No hay clientes registrados.');
+          else {
+            const listText = clients.map(c => `• ${c.name}${c.email ? ' — ' + c.email : ''}`).join('\n');
+            appendMessage('ai', `Clientes:\n${listText}`);
+          }
+          if (document.getElementById('section-clients')) document.querySelector('[data-section="clients"]')?.click();
+        } else {
+          appendMessage('error', `No se pudieron listar clientes: ${res.error || 'error desconocido'}`);
+        }
+        return;
+      }
+      case 'update_client': {
+        await saveUserMessageToConversation(text);
+        const res = await actionsExecutor.executeAction({ action: 'update_client', data: parsedCmd.data });
+        if (res.ok && res.result) {
+          appendMessage('ai', `✅ Cliente actualizado${res.result?.name ? ': ' + res.result.name : ''}`);
+          showToast('Cliente actualizado', 'success');
+          if (document.getElementById('section-clients').classList.contains('active')) loadClientsSection();
+        } else {
+          appendMessage('error', `No se pudo actualizar el cliente: ${res.error || 'no encontrado'}`);
+        }
+        return;
+      }
+      case 'delete_client': {
+        await saveUserMessageToConversation(text);
+        const res = await actionsExecutor.executeAction({ action: 'delete_client', data: parsedCmd.data });
+        if (res.ok && res.result && res.result.deleted) {
+          appendMessage('ai', `🗑️ Cliente eliminado`);
+          showToast('Cliente eliminado', 'success');
+          if (document.getElementById('section-clients').classList.contains('active')) loadClientsSection();
+        } else {
+          appendMessage('error', `No se pudo eliminar el cliente: ${res.error || 'no encontrado'}`);
+        }
+        return;
+      }
+      case 'list_tasks': {
+        await saveUserMessageToConversation(text);
+        const res = await actionsExecutor.executeAction({ action: 'list_tasks', data: parsedCmd.data });
+        if (res.ok) {
+          const tasks = res.result || [];
+          if (tasks.length === 0) {
+            appendMessage('ai', 'No tienes tareas según el filtro solicitado.');
+          } else {
+            const listText = tasks.map(t => `• ${t.title}${t.due_date ? ' — ' + t.due_date : ''}`).join('\n');
+            appendMessage('ai', `Tareas:\n${listText}`);
+          }
+          // Opcional: abrir sección Tareas
+          if (document.getElementById('section-tasks')) document.querySelector('[data-section="tasks"]')?.click();
+        } else {
+          appendMessage('error', `No se pudo listar tareas: ${res.error || 'error desconocido'}`);
+        }
+        return;
+      }
+      case 'update_task': {
+        await saveUserMessageToConversation(text);
+        const res = await actionsExecutor.executeAction({ action: 'update_task', data: parsedCmd.data });
+        if (res.ok && res.result) {
+          const updated = res.result;
+          appendMessage('ai', `✅ Tarea actualizada${updated?.title ? ': ' + updated.title : ''}`);
+          showToast('Tarea actualizada', 'success');
+          if (document.getElementById('section-tasks').classList.contains('active')) loadTasksSection();
+        } else {
+          appendMessage('error', `No se pudo actualizar la tarea: ${res.error || 'no encontrada'}`);
+        }
+        return;
+      }
+      case 'delete_task': {
+        await saveUserMessageToConversation(text);
+        const res = await actionsExecutor.executeAction({ action: 'delete_task', data: parsedCmd.data });
+        if (res.ok && res.result && res.result.deleted) {
+          appendMessage('ai', `🗑️ Tarea eliminada`);
+          showToast('Tarea eliminada', 'success');
+          if (document.getElementById('section-tasks').classList.contains('active')) loadTasksSection();
+        } else {
+          appendMessage('error', `No se pudo eliminar la tarea: ${res.error || 'no encontrada'}`);
         }
         return;
       }
@@ -278,6 +429,51 @@ async function sendMessage() {
     appendMessage('error', `❌ Error: ${err.message}`);
   } finally {
     setLoading(false);
+  }
+}
+
+/**
+ * Asegura que la conversación exista, agrega el mensaje del usuario al estado y lo guarda.
+ * Reutiliza la lógica de migración si la conversación es local y Supabase está listo.
+ */
+async function saveUserMessageToConversation(text) {
+  // Si es la primera message, crea la conversación en Supabase
+  if (!ChatState.conversationId) {
+    const title = text.slice(0, 60) + (text.length > 60 ? '…' : '');
+    const conv = await createConversation(title);
+    ChatState.conversationId = conv?.id || `local-${Date.now()}`;
+  }
+
+  // Oculta la bienvenida
+  hideWelcomeScreen();
+
+  // Agrega el mensaje del usuario
+  const userMsg = { role: 'user', content: text, timestamp: new Date().toISOString(), _saved: false };
+  ChatState.messages.push(userMsg);
+  appendMessage('user', text);
+
+  // Si la conversación tiene ID local (p.ej. 'local-...') pero Supabase ya está listo,
+  // crea la conversación real en la DB antes de intentar guardar mensajes.
+  if (String(ChatState.conversationId).startsWith('local-') && isSupabaseReady()) {
+    try {
+      const title = ChatState.messages[0]?.content?.slice(0, 60) || 'Nueva conversación';
+      const conv = await createConversation(title);
+      if (conv?.id) {
+        ChatState.conversationId = conv.id;
+        // Migrar mensajes locales pendientes al servidor (si hay)
+        for (const m of ChatState.messages) {
+          if (m._saved) continue;
+          await saveMessage(ChatState.conversationId, m.role, m.content);
+          m._saved = true;
+        }
+      }
+    } catch (err) {
+      console.error('[Chat] Error migrando conversación local a Supabase:', err);
+    }
+  } else {
+    // Guarda en Supabase (si ya es un ID válido o supabase no está listo, saveMessage internamente lo ignorará)
+    await saveMessage(ChatState.conversationId, 'user', text);
+    userMsg._saved = true;
   }
 }
 
