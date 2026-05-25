@@ -19,18 +19,20 @@ const CONFIG = {
 
   // ──────────────────────────────────────────────────────────
   // Proveedor de IA
-  // Valores posibles: 'claude' | 'openai' | 'mock'
-  // 'mock' no necesita API key — útil para desarrollo UI
+  // Valores posibles: 'claude' | 'openai' | 'gemini' | 'mock'
+  // 'gemini' → API gratis de Google (recomendado)
+  // 'mock' → no necesita API key (desarrollo UI)
   // ──────────────────────────────────────────────────────────
-  AI_PROVIDER: localStorage.getItem('ai_provider') || 'mock',
+  AI_PROVIDER: localStorage.getItem('ai_provider') || 'gemini',
   AI_API_KEY:  localStorage.getItem('ai_api_key')  || '',
 
   // ──────────────────────────────────────────────────────────
   // Modelos por proveedor
   // ──────────────────────────────────────────────────────────
   AI_MODELS: {
-    claude: 'claude-opus-4-5',   // o 'claude-sonnet-4-6' para respuestas más rápidas
-    openai: 'gpt-4o-mini',       // cambia a 'gpt-4o' para mayor calidad
+    claude: 'claude-opus-4-5',      // o 'claude-sonnet-4-6' para respuestas más rápidas
+    openai: 'gpt-4o-mini',          // cambia a 'gpt-4o' para mayor calidad
+    gemini: 'gemini-2.0-flash',     // muy rápido y gratis (recomendado para demo)
   },
 
   // ──────────────────────────────────────────────────────────
@@ -50,6 +52,7 @@ const CONFIG = {
   AI_ENDPOINTS: {
     claude: 'https://api.anthropic.com/v1/messages',
     openai: 'https://api.openai.com/v1/chat/completions',
+    gemini: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
   },
 
   // ──────────────────────────────────────────────────────────

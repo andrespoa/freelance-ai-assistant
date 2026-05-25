@@ -37,7 +37,10 @@
 
     <!-- Navegación principal -->
     <nav class="sidebar-nav">
-      <button class="nav-item active" data-section="chat">
+      <button class="nav-item active" data-section="dashboard">
+        <span class="nav-icon">📊</span> Dashboard
+      </button>
+      <button class="nav-item" data-section="chat">
         <span class="nav-icon">💬</span> Chat
       </button>
       <button class="nav-item" data-section="clients">
@@ -87,8 +90,99 @@
     <!-- System status banner (errors / warnings) -->
     <div id="systemBanner" class="system-banner" hidden></div>
 
+    <!-- ─── Sección DASHBOARD ─── -->
+    <section class="section active" id="section-dashboard">
+      <div class="section-header">
+        <h2>📊 Dashboard de Negocio</h2>
+      </div>
+
+      <!-- KPIs Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon">👥</div>
+          <div class="kpi-content">
+            <p class="kpi-label">Clientes Activos</p>
+            <p class="kpi-value" id="kpiActiveClients">0</p>
+            <p class="kpi-hint" id="kpiClientsHint">este mes</p>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon">📁</div>
+          <div class="kpi-content">
+            <p class="kpi-label">Proyectos en Curso</p>
+            <p class="kpi-value" id="kpiActiveProjects">0</p>
+            <p class="kpi-hint" id="kpiProjectsHint">en progreso</p>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon">✅</div>
+          <div class="kpi-content">
+            <p class="kpi-label">Tareas Pendientes</p>
+            <p class="kpi-value" id="kpiPendingTasks">0</p>
+            <p class="kpi-hint" id="kpiTasksHint">requieren atención</p>
+          </div>
+        </div>
+
+        <div class="kpi-card">
+          <div class="kpi-icon">💰</div>
+          <div class="kpi-content">
+            <p class="kpi-label">Ingresos Potenciales</p>
+            <p class="kpi-value" id="kpiRevenue">$0</p>
+            <p class="kpi-hint" id="kpiRevenueHint">de proyectos activos</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts Section -->
+      <div class="dashboard-grid">
+        <!-- Proyectos por Estado -->
+        <div class="chart-card">
+          <h3>Estado de Proyectos</h3>
+          <div class="chart-container">
+            <canvas id="projectStatusChart"></canvas>
+          </div>
+          <div id="projectStatusLegend" class="chart-legend"></div>
+        </div>
+
+        <!-- Tareas por Prioridad -->
+        <div class="chart-card">
+          <h3>Tareas por Prioridad</h3>
+          <div class="chart-container">
+            <canvas id="taskPriorityChart"></canvas>
+          </div>
+          <div id="taskPriorityLegend" class="chart-legend"></div>
+        </div>
+
+        <!-- Clientes por Volumen -->
+        <div class="chart-card">
+          <h3>Top 5 Clientes</h3>
+          <div id="topClientsChart" class="simple-chart">
+            <p class="empty-hint">Sin datos disponibles</p>
+          </div>
+        </div>
+
+        <!-- Actividad Reciente -->
+        <div class="chart-card">
+          <h3>Actividad Reciente</h3>
+          <div id="recentActivityList" class="activity-list">
+            <p class="empty-hint">Sin actividad registrada</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Proyectos Próximos a Vencer -->
+      <div class="dashboard-section">
+        <h3>⏰ Proyectos Próximos a Vencer</h3>
+        <div id="upcomingProjects" class="deadline-list">
+          <p class="empty-hint">Todas las fechas límite están bajo control</p>
+        </div>
+      </div>
+    </section>
+
     <!-- ─── Sección CHAT ─── -->
-    <section class="section active" id="section-chat">
+    <section class="section" id="section-chat">
       <div class="chat-wrapper">
 
         <!-- Mensajes -->
@@ -367,6 +461,7 @@
 
         <label class="form-label">Proveedor de IA
           <select id="aiProvider">
+            <option value="gemini">Google Gemini (GRATIS - Recomendado) 🚀</option>
             <option value="claude">Anthropic Claude</option>
             <option value="openai">OpenAI GPT</option>
             <option value="mock">Mock (sin API key)</option>
@@ -411,6 +506,7 @@
   <script src="js/actionsExecutor.js"></script>
   <script src="js/aiService.js"></script>
   <script src="js/dbCheck.js"></script>
+  <script src="js/dashboard.js"></script>
   <script src="js/chat.js"></script>
   <script src="js/app.js"></script>
 </body>

@@ -12,6 +12,7 @@
  * Proveedores disponibles:
  *   - ClaudeProvider  → Anthropic Claude API
  *   - OpenAIProvider  → OpenAI GPT API
+ *   - GeminiProvider  → Google Gemini API (GRATIS)
  *   - MockProvider    → Respuestas simuladas (sin API key)
  * ─────────────────────────────────────────────────────
  */
@@ -199,6 +200,80 @@ class MockProvider extends AIProvider {
 
 
 // ═══════════════════════════════════════════════════════════
+// PROVEEDOR: GOOGLE GEMINI (GRATIS)
+// ═══════════════════════════════════════════════════════════
+
+class GeminiProvider extends AIProvider {
+  constructor(apiKey, options = {}) {
+    super(apiKey, options);
+    this.model = options.model || CONFIG.AI_MODELS.gemini;
+    this.endpoint = CONFIG.AI_ENDPOINTS.gemini;
+  }
+
+  async sendMessage(messages, systemPrompt) {
+    if (!this.isConfigured()) {
+      throw new Error('API key de Gemini no configurada. Ve a ⚙ Configuración.');
+    }
+
+    // Construye el contenido para Gemini
+    const contents = [
+      {
+        role: 'user',
+        parts: [{ text: systemPrompt }],
+      },
+      ...messages.map(m => ({
+        role: m.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: m.content }],
+      })),
+    ];
+
+    const url = `${this.endpoint}?key=${this.apiKey}`;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: contents,
+        generationConfig: {
+          maxOutputTokens: CONFIG.MAX_TOKENS,
+          temperature: 0.7,
+          topP: 0.95,
+        },
+        safetySettings: [
+          {
+            category: 'HARM_CATEGORY_HARASSMENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_HATE_SPEECH',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+          {
+            category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+            threshold: 'BLOCK_MEDIUM_AND_ABOVE',
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      throw new Error(`Gemini API error ${response.status}: ${err.error?.message || response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'Sin respuesta de Gemini';
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
 // REGISTRO DE PROVEEDORES
 // Agrega aquí nuevos proveedores
 // ═══════════════════════════════════════════════════════════
@@ -206,6 +281,7 @@ class MockProvider extends AIProvider {
 const AI_PROVIDERS = {
   claude: ClaudeProvider,
   openai: OpenAIProvider,
+  gemini: GeminiProvider,
   mock:   MockProvider,
 };
 
