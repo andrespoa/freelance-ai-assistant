@@ -160,7 +160,6 @@ Ver: [tests/README.md](tests/README.md)
 1. Ve a [https://app.supabase.com](https://app.supabase.com) y crea una cuenta gratuita
 2. Crea un nuevo proyecto (dale un nombre, elige región cercana)
 3. Espera ~2 minutos a que el proyecto esté listo
-contraseña: 0Oq8v0YfCBqWd61j
 
 #### Paso 2: Ejecuta el schema SQL
 1. En tu proyecto de Supabase, ve a **SQL Editor**

@@ -15,6 +15,11 @@ docs/NOTION_SUMMARY_DAY*.md
 .env
 .env.local
 .env.*.local
+apis.txt
+secrets.txt
+credentials.txt
+*.key
+*.pem
 
 # IDE
 .vscode/
